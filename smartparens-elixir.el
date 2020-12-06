@@ -30,37 +30,41 @@
 (--each '(elixir-mode)
   (add-to-list 'sp-sexp-suffix (list it 'regexp "")))
 
-(defun sp-elixir-def-p (id)
-  "Return non-nil if the \"do\" keyword is part of definition.
+(defvar sp--elixir-keywords
+  (regexp-opt '("defmodule" "defmacro" "defmacrop" "def" "defp"
+                "if" "unless" "case" "cond"
+                "with" "for" "receive" "try" "quote"))
+  "Regexp that matches opening delimiters.")
 
-ID is the opening delimiter.
+(defun sp-elixir-search-def-start (pattern)
+  "Return non-nil if the \"do\" keyword is part of definition.
 
 Definitions are the constructions of the form defmodule-do-end,
 def-do-end and similar pairs."
   (save-excursion
-    (when (equal "do" id)
-      (back-to-indentation)
-      (looking-at (regexp-opt '(
-                                "defmodule"
-                                "defmacro"
-                                "defmacrop"
-                                "quote"
-                                "def"
-                                "defp"
-                                "if"
-                                "unless"
-                                "case"
-                                "cond"
-                                "with"
-                                "for"
-                                "receive"
-                                "try"
-                                ))))))
+    (catch 'definition
+      (while t
+        (let ((line (thing-at-point 'line t)))
+          (message "%s" line)
+          (cond
+           ((string-match-p pattern line)
+            (throw 'definition t))
+           ;; we terminate the search as early as we find any of
+           ;; ordinary keywords
+           ((string-match-p sp--elixir-keywords line)
+            (throw 'definition nil))
+           ;; we've hit the top, no luck
+           ((bobp) (throw 'definition nil))))
+        (forward-line -1)))))
+
+(defun sp-elixir-skip-do-keyword-p (ms _mb _me)
+  (sp-elixir-search-def-start "\\bdo:"))
 
 (defun sp-elixir-skip-def-p (ms _mb _me)
   "Test if \"do\" is part of definition.
 MS, MB, ME."
-  (sp-elixir-def-p ms))
+  (when (equal "do" ms)
+    (sp-elixir-search-def-start sp--elixir-keywords)))
 
 (defun sp-elixir-do-block-post-handler (_id action _context)
   "Insert \"do\" keyword and indent the new block.
@@ -102,14 +106,17 @@ ID, ACTION, CONTEXT."
   (sp-local-pair "def" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "defp" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "defmodule" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "fn" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
@@ -117,10 +124,12 @@ ID, ACTION, CONTEXT."
   (sp-local-pair "if" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "unless" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "case" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
@@ -128,6 +137,7 @@ ID, ACTION, CONTEXT."
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "receive" "end"
                  :when '(("RET" "<evil-ret>"))
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :post-handlers '(sp-elixir-empty-do-block-post-handler))
   )
 
