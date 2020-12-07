@@ -30,41 +30,68 @@
 (--each '(elixir-mode)
   (add-to-list 'sp-sexp-suffix (list it 'regexp "")))
 
-(defvar sp--elixir-keywords
+(defvar sp-elixir-keywords
   (regexp-opt '("defmodule" "defmacro" "defmacrop" "def" "defp"
                 "if" "unless" "case" "cond"
-                "with" "for" "receive" "try" "quote"))
+                "with" "for" "receive" "try" "quote")
+              'words)
   "Regexp that matches opening delimiters.")
 
-(defun sp-elixir-search-def-start (pattern)
-  "Return non-nil if the \"do\" keyword is part of definition.
+(defun sp-elixir-search-do-keyword (direction)
+  "Search in given DIRECTION if \"do:\" keyword can be found.
 
-Definitions are the constructions of the form defmodule-do-end,
-def-do-end and similar pairs."
+DIRECTION is either 1 or -1.
+
+This search terminates early if any of `sp-elixir-keywords' were
+found."
+  ;; Check starting line out of the loop, so to avoid unwanted
+  ;; early termination
+  (if (string-match-p "\\bdo:" (thing-at-point 'line t)) t
+    (catch 'definition
+      (save-excursion
+        (while t
+          (forward-line direction)
+          (let ((line (string-trim-left (thing-at-point 'line t))))
+            (cond ((string-match-p "\\bdo:" line)
+                   (throw 'definition t))
+                  ;; Terminate the search as early as we find any of
+                  ;; `sp-elixir-keywords'
+                  ((eq (string-match-p sp-elixir-keywords line) 0)
+                   (throw 'definition nil))
+                  ((or (bobp) (eobp)) (throw 'definition nil)))))))))
+
+(defun sp-elixir-search-def-start ()
+  "Search for definition start.
+
+Definitions in Elixir can contain any of `sp-elixir-keywords' and
+are followed with \"do\" keyword, which may not be on the same
+line."
   (save-excursion
     (catch 'definition
       (while t
-        (let ((line (thing-at-point 'line t)))
-          (message "%s" line)
-          (cond
-           ((string-match-p pattern line)
-            (throw 'definition t))
-           ;; we terminate the search as early as we find any of
-           ;; ordinary keywords
-           ((string-match-p sp--elixir-keywords line)
-            (throw 'definition nil))
-           ;; we've hit the top, no luck
-           ((bobp) (throw 'definition nil))))
+        (let ((line (string-trim-left (thing-at-point 'line t))))
+          (cond ((eq (string-match-p sp-elixir-keywords line) 0)
+                 (throw 'definition t))
+                ((bobp) (throw 'definition nil))))
         (forward-line -1)))))
 
 (defun sp-elixir-skip-do-keyword-p (ms _mb _me)
-  (sp-elixir-search-def-start "\\bdo:"))
+  "Test if \"do:\" is part of definition.
+
+MS must not be \"do\" keyword."
+  (unless (equal "do" ms)
+    (sp-elixir-search-do-keyword 1)))
 
 (defun sp-elixir-skip-def-p (ms _mb _me)
   "Test if \"do\" is part of definition.
-MS, MB, ME."
+
+MS must be \"do\" keyword.
+
+Also checks for \"do:\" keyword similarly to
+`sp-elixir-skip-do-keyword-p' except searches backwards"
   (when (equal "do" ms)
-    (sp-elixir-search-def-start sp--elixir-keywords)))
+    (or (sp-elixir-search-def-start)
+        (sp-elixir-search-do-keyword -1))))
 
 (defun sp-elixir-do-block-post-handler (_id action _context)
   "Insert \"do\" keyword and indent the new block.
