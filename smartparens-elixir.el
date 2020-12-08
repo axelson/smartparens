@@ -35,38 +35,37 @@
                 "if" "unless" "case" "cond"
                 "with" "for" "receive" "try" "quote")
               'words)
-  "Regexp that matches opening delimiters.")
+  "Regexp that matches opening delimiters for definitions.
+Definitions require either comma followed by \"do:\" keyword
+list, or \"do\" \"end\" block delimiters.")
 
-(defun sp-elixir-search-do-keyword (direction)
-  "Search in given DIRECTION if \"do:\" keyword can be found.
-
-DIRECTION is either 1 or -1.
+(defun sp-elixir-search-do-keyword ()
+  "Search for \"do:\" keyword.
 
 This search terminates early if any of `sp-elixir-keywords' were
 found."
   ;; Check starting line out of the loop, so to avoid unwanted
   ;; early termination
-  (if (string-match-p "\\bdo:" (thing-at-point 'line t)) t
-    (catch 'definition
-      (save-excursion
-        (while t
-          (forward-line direction)
-          (let ((line (string-trim-left (thing-at-point 'line t))))
-            (cond
-             ;; Terminate the search as early as we find any of
-             ;; `sp-elixir-keywords'
-             ((eq (string-match-p sp-elixir-keywords line) 0)
-              (throw 'definition nil))
-             ((string-match-p "\\bdo:" line)
-              (throw 'definition t))
-             ((or (bobp) (eobp)) (throw 'definition nil)))))))))
+  (or (string-match-p "\\bdo:" (thing-at-point 'line t))
+      (catch 'definition
+        (save-excursion
+          (while t
+            (forward-line 1)
+            (let ((line (string-trim-left (thing-at-point 'line t))))
+              (cond
+               ;; Terminate the search if we find any of `sp-elixir-keywords'
+               ((eq (string-match-p sp-elixir-keywords line) 0)
+                (throw 'definition nil))
+               ((string-match-p "\\bdo:" line)
+                (throw 'definition t))
+               ((eobp) (throw 'definition nil)))))))))
 
 (defun sp-elixir-search-def-start ()
   "Search for definition start.
 
-Definitions in Elixir can contain any of `sp-elixir-keywords' and
-are followed with \"do\" keyword, which may not be on the same
-line."
+Definitions in Elixir can contain any of `sp-elixir-keywords'
+followed with \"do\" keyword and closed with \"end\" keyword,
+which may not be on the same line."
   (save-excursion
     (catch 'definition
       (while t
@@ -81,18 +80,14 @@ line."
 
 MS must not be \"do\" keyword."
   (unless (equal "do" ms)
-    (sp-elixir-search-do-keyword 1)))
+    (sp-elixir-search-do-keyword)))
 
 (defun sp-elixir-skip-def-p (ms _mb _me)
   "Test if \"do\" is part of definition.
 
-MS must be \"do\" keyword.
-
-Also checks for \"do:\" keyword similarly to
-`sp-elixir-skip-do-keyword-p' except searches backwards"
+MS must be \"do\" keyword."
   (when (equal "do" ms)
-    (or (sp-elixir-search-def-start)
-        (sp-elixir-search-do-keyword -1))))
+    (sp-elixir-search-def-start)))
 
 (defun sp-elixir-do-block-post-handler (_id action _context)
   "Insert \"do\" keyword and indent the new block.
