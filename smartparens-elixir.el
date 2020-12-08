@@ -52,13 +52,14 @@ found."
         (while t
           (forward-line direction)
           (let ((line (string-trim-left (thing-at-point 'line t))))
-            (cond ((string-match-p "\\bdo:" line)
-                   (throw 'definition t))
-                  ;; Terminate the search as early as we find any of
-                  ;; `sp-elixir-keywords'
-                  ((eq (string-match-p sp-elixir-keywords line) 0)
-                   (throw 'definition nil))
-                  ((or (bobp) (eobp)) (throw 'definition nil)))))))))
+            (cond
+             ;; Terminate the search as early as we find any of
+             ;; `sp-elixir-keywords'
+             ((eq (string-match-p sp-elixir-keywords line) 0)
+              (throw 'definition nil))
+             ((string-match-p "\\bdo:" line)
+              (throw 'definition t))
+             ((or (bobp) (eobp)) (throw 'definition nil)))))))))
 
 (defun sp-elixir-search-def-start ()
   "Search for definition start.
