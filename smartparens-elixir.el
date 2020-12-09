@@ -31,7 +31,7 @@
   (add-to-list 'sp-sexp-suffix (list it 'regexp "")))
 
 (defvar sp-elixir-keywords
-  (regexp-opt '("defmodule" "defmacro" "defmacrop" "def" "defp"
+  (regexp-opt '("defmodule" "defmacro" "defmacrop" "def" "defp" "defimpl"
                 "if" "unless" "case" "cond"
                 "with" "for" "receive" "try" "quote")
               'words)
@@ -51,10 +51,10 @@ found."
         (save-excursion
           (while t
             (forward-line 1)
-            (let ((line (string-trim-left (thing-at-point 'line t))))
+            (let ((line (thing-at-point 'line t)))
               (cond
                ;; Terminate the search if we find any of `sp-elixir-keywords'
-               ((eq (string-match-p sp-elixir-keywords line) 0)
+               ((string-match-p sp-elixir-keywords line)
                 (throw 'definition nil))
                ((string-match-p "\\bdo:" line)
                 (throw 'definition t))
@@ -69,8 +69,8 @@ which may not be on the same line."
   (save-excursion
     (catch 'definition
       (while t
-        (let ((line (string-trim-left (thing-at-point 'line t))))
-          (cond ((eq (string-match-p sp-elixir-keywords line) 0)
+        (let ((line (thing-at-point 'line t)))
+          (cond ((string-match-p sp-elixir-keywords line)
                  (throw 'definition t))
                 ((bobp) (throw 'definition nil))))
         (forward-line -1)))))
@@ -141,6 +141,11 @@ ID, ACTION, CONTEXT."
                  :post-handlers '(sp-elixir-do-block-post-handler)
                  :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
+  (sp-local-pair "defimpl" "end"
+                 :when '(("SPC" "RET" "<evil-ret>"))
+                 :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
+                 :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "fn" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '("| "))
@@ -148,6 +153,19 @@ ID, ACTION, CONTEXT."
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
                  :skip-match 'sp-elixir-skip-do-keyword-p
+                 :unless '(sp-in-comment-p sp-in-string-p))
+  (sp-local-pair "for" "end"
+                 :when '(("SPC" "RET" "<evil-ret>"))
+                 :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
+                 :unless '(sp-in-comment-p sp-in-string-p))
+  (sp-local-pair "cond" "end"
+                 :when '(("SPC" "RET" "<evil-ret>"))
+                 :post-handlers '(sp-elixir-do-block-post-handler)
+                 :unless '(sp-in-comment-p sp-in-string-p))
+  (sp-local-pair "with" "end"
+                 :when '(("SPC" "RET" "<evil-ret>"))
+                 :post-handlers '(sp-elixir-do-block-post-handler)
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "unless" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
@@ -157,6 +175,12 @@ ID, ACTION, CONTEXT."
   (sp-local-pair "case" "end"
                  :when '(("SPC" "RET" "<evil-ret>"))
                  :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
+                 :unless '(sp-in-comment-p sp-in-string-p))
+  (sp-local-pair "try" "end"
+                 :when '(("SPC" "RET" "<evil-ret>"))
+                 :post-handlers '(sp-elixir-do-block-post-handler)
+                 :skip-match 'sp-elixir-skip-do-keyword-p
                  :unless '(sp-in-comment-p sp-in-string-p))
   (sp-local-pair "receive" "end"
                  :when '(("RET" "<evil-ret>"))
