@@ -27,9 +27,6 @@
 
 (require 'smartparens)
 
-(--each '(elixir-mode)
-  (add-to-list 'sp-sexp-suffix (list it 'regexp "")))
-
 (defvar sp-elixir-keywords
   (regexp-opt '("defmodule" "defmacro" "defmacrop" "def" "defp" "defimpl"
                 "if" "unless" "case" "cond"
@@ -38,6 +35,9 @@
   "Regexp that matches opening delimiters for definitions.
 Definitions require either comma followed by \"do:\" keyword
 list, or \"do\" \"end\" block delimiters.")
+
+(--each '(elixir-mode)
+  (add-to-list 'sp-sexp-suffix (list it 'regexp "")))
 
 (defun sp-elixir-skip-do-keyword-p (ms _mb _me)
   "Test if \"do:\" is part of definition.
